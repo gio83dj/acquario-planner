@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Manutenzione Acquario con piante</title>
+    <style>
+        :root {
+            --primary: #006064; /* Deep Cyan */
+            --primary-light: #4dd0e1;
+            --accent: #00e5ff;
+            --bg-dark: #001f3f; /* Deep Ocean */
+            --bg-gradient: linear-gradient(180deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --text-main: #ffffff;
+            --text-muted: #b2ebf2;
+            --danger: #ff5252;
+            --success: #69f0ae;
+            --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Sfondo animato con bolle */
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            animation: float 10s infinite ease-in-out;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        /* Header */
+        header {
+            padding: 20px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+            border-bottom: 1px solid var(--glass-border);
+            flex-shrink: 0;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+
+        .current-date {
+            margin-top: 5px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        /* Main Content Area */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+            z-index: 5;
+            padding: 20px;
+            padding-bottom: 90px; /* Space for bottom nav */
+        }
+
+        .view-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Monthly Calendar Styles */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .month-nav-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: white;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            text-align: center;
+        }
+
+        .weekday {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+        }
+
+        .day-cell {
+            aspect-ratio: 1;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .day-cell:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .day-cell.today {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+        }
+
+        .day-cell.selected {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        /* Indicator dots for tasks */
+        .task-dots {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+/* Indicator dots for tasks (solo per i futuri) */
+.future-dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--primary-light);
+    border-radius: 50%;
+}
+
+.check-indicator {
+    width: 10px;
+    height: 10px;
+    background-color: var(--primary-light); /* BLU per "Da Fare" */
+    border-radius: 3px;
+    color: white;
+    font-size: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.check-indicator.completed {
+    width: 10px;
+    height: 10px;
+    background-color: var(--success); /* VERDE per "Fatto" */
+    border-radius: 50%;
+    font-size: 9px;
+}
+
+        .dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background-color: var(--primary-light); /* BLU per "Da Fare" */
+        }
+
+        .dot.missing {
+            background-color: var(--success); /* VERDE per "Fatto" */
+        }
+		
+
+
+        /* Daily Task List Styles */
+        .task-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(5px);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+
+        .task-card:active {
+            transform: scale(0.98);
+        }
+
+        .task-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 229, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            color: var(--accent);
+        }
+
+        .task-info {
+            flex: 1;
+        }
+
+        .task-title {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 2px;
+        }
+
+        .task-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .check-btn {
+            width: 32px;
+            height: 32px;
+            border: 2px solid var(--text-muted);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .task-card.completed {
+            opacity: 0.6;
+        }
+
+        .task-card.completed .check-btn {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .task-card.completed .task-title {
+            text-decoration: line-through;
+        }
+
+        /* Bottom Navigation */
+        nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: rgba(15, 32, 39, 0.95);
+            backdrop-filter: blur(15px);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            z-index: 20;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+        }
+
+        .nav-icon {
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: rgba(105, 240, 174, 0.9);
+            color: #003300;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            z-index: 100;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 20px;
+            padding-bottom: 20px;
+        }
+        .legend span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Animated Background Elements -->
+    <div id="bubbles"></div>
+
+    <header>
+        <h1>Manutenzione Acquario</h1>
+        <div class="current-date" id="headerDate">Caricamento...</div>
+    </header>
+
+    <main>
+        <!-- CALENDARIO MENSILE -->
+        <section id="monthView" class="view-section active">
+            <div class="calendar-header">
+                <button class="month-nav-btn" id="prevMonth">&lt;</button>
+                <h2 id="currentMonthLabel">Mese</h2>
+                <button class="month-nav-btn" id="nextMonth">&gt;</button>
+            </div>
+            
+            <div class="calendar-grid">
+                <div class="weekday">Lun</div>
+                <div class="weekday">Mar</div>
+                <div class="weekday">Mer</div>
+                <div class="weekday">Gio</div>
+                <div class="weekday">Ven</div>
+                <div class="weekday">Sab</div>
+                <div class="weekday">Dom</div>
+            </div>
+            <div class="calendar-grid" id="daysContainer">
+                <!-- Days generated by JS -->
+            </div>
+
+            <div class="legend">
+                <span><span class="dot"></span> Da fare</span>
+                <span><span class="dot missing"></span> Fatto</span>
+            </div>
+        </section>
+
+        <!-- VISTA GIORNALIERA -->
+        <section id="dayView" class="view-section">
+            <div style="margin-bottom: 15px; font-weight: 600; color: var(--text-muted);">
+                Attività del <span id="selectedDayLabel" style="color: var(--accent);"></span>
+            </div>
+            <div id="taskList">
+                <!-- Tasks generated by JS -->
+            </div>
+        </section>
+    </main>
+
+    <nav>
+        <div class="nav-item active" data-target="monthView">
+            <div class="nav-icon">📅</div>
+            <span>Mese</span>
+        </div>
+        <div class="nav-item" data-target="dayView">
+            <div class="nav-icon">💧</div>
+            <span>Giorno</span>
+        </div>
+    </nav>
+
+    <div class="toast" id="toast">Compito completato!</div>
+
+    <script>
+        // --- GESTIONE STATO (LOCALSTORAGE) ---
+        
+        // Definizione dei compiti
+        const tasks = [
+            {
+                id: 'water',
+                title: 'Cambio Acqua',
+                desc: '2 bottiglie e mezzo Flourish Excel',
+                period: 'monthly',
+                offsetDays: 0 // Prima volta: 1st day, poi ogni 30
+            },
+            {
+                id: 'micro',
+                title: 'Dosaggio Flourish',
+                desc: 'Microelementi (2 volte a settimana)',
+                period: 'weekly',
+                // Giorni della settimana (0=Lun, 1=Mar, ... 6=Dom)
+                // Esempio: Lunedì (0) e Giovedì (3)
+                daysOfWeek: [0, 3] 
+            },
+            {
+                id: 'excel',
+                title: 'Dosaggio Excel',
+                desc: 'Carbonio (Giorni alterni)',
+                period: 'alternate',
+                // Se il giorno è pari: es. 1, 3, 5...
+                pattern: 'odd'
+            }
+        ];
+
+        function getSchedule() {
+            const stored = localStorage.getItem('aquarium_schedule');
+            return stored ? JSON.parse(stored) : {};
+        }
+
+        function saveSchedule(dateKey, taskData) {
+            const all = getSchedule();
+            if (!all[dateKey]) all[dateKey] = {};
+            all[dateKey] = { ...all[dateKey], ...taskData };
+            localStorage.setItem('aquarium_schedule', JSON.stringify(all));
+        }
+
+        function getTaskStatus(dateKey, taskId) {
+            const dayData = getSchedule()[dateKey];
+            return dayData ? dayData[taskId] : false;
+        }
+
+        // --- FUNZIONI DI SUPPORTO ---
+
+        function isToday(date) {
+            const today = new Date();
+            return date.getDate() === today.getDate() &&
+                   date.getMonth() === today.getMonth() &&
+                   date.getFullYear() === today.getFullYear();
+        }
+
+        function formatKey(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        // --- LOGICA UI & CALENDARIO ---
+
+        let currentDate = new Date(); // Oggetto Date per navigare tra i mesi
+        let selectedDate = new Date(); // Data selezionata
+
+        const daysContainer = document.getElementById('daysContainer');
+        const monthLabel = document.getElementById('currentMonthLabel');
+        const headerDate = document.getElementById('headerDate');
+        const selectedDayLabel = document.getElementById('selectedDayLabel');
+
+        function init() {
+            renderHeader();
+            renderCalendar();
+            
+            // Event Listeners Nav
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                    document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+                    
+                    item.classList.add('active');
+                    const targetId = item.getAttribute('data-target');
+                    document.getElementById(targetId).classList.add('active');
+                });
+            });
+
+            // Event Listeners Month Navigation
+            document.getElementById('prevMonth').addEventListener('click', () => changeMonth(-1));
+            document.getElementById('nextMonth').addEventListener('click', () => changeMonth(1));
+        }
+
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function renderHeader() {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            headerDate.textContent = new Date().toLocaleDateString('it-IT', options);
+        }
+
+        function renderCalendar() {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    // Header del mese in italiano
+    monthLabel.textContent = new Date(year, month).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+    daysContainer.innerHTML = '';
+
+    // --- LOGICA ALLINEAMENTO SETTIMANA (Lunedì come primo giorno) ---
+    // getDay() restituisce: 0 (Dom), 1 (Lun), 2 (Mar), 3 (Mer), 4 (Gio), 5 (Ven), 6 (Sab)
+    let firstDayIndex = new Date(year, month, 1).getDay(); 
+    
+    // Trasformiamo la Domenica (0) in 7, così Lunedì è 1, Martedì è 2... Sabato è 6, Domenica è 7.
+    const adjustedFirstDay = firstDayIndex === 0 ? 7 : firstDayIndex;
+    
+    // Calcoliamo quanti spazi vuoti servono prima del 1° del mese
+    // Se è Lunedì (1), servono 0 spazi. Se è Martedì (2), serve 1 spazio, ecc.
+    const spacerCount = adjustedFirstDay - 1;
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // 1. Creazione degli spazi vuoti (per allineare correttamente il 1° del mese)
+    for (let i = 0; i < spacerCount; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'day-cell empty'; // Aggiunta classe per eventuale styling
+        daysContainer.appendChild(emptyCell);
+    }
+
+    // 2. Creazione dei giorni del mese
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateObj = new Date(year, month, d);
+        const dateKey = formatKey(dateObj);
+        
+        // Controllo se il giorno è nel passato (rispetto a mezzanotte di oggi)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const isPast = dateObj < today;
+
+        const cell = document.createElement('div');
+        cell.className = `day-cell ${isToday(dateObj) ? 'today' : ''} ${dateKey === formatKey(selectedDate) ? 'selected' : ''}`;
+        cell.textContent = d;
+        cell.onclick = () => selectDate(dateObj);
+
+        // --- LOGICA TASK ---
+        const dayData = getSchedule()[dateKey];
+        const dotsContainer = document.createElement('div');
+        dotsContainer.className = 'task-dots';
+
+        tasks.forEach(task => {
+            let shouldShow = false;
+
+            // Logica ricorrenze migliorata
+            if (task.period === 'monthly') {
+                // Esempio: il primo giorno di ogni mese
+                if (d === 1) shouldShow = true; 
+            } 
+            else if (task.period === 'weekly') {
+                const dayOfWeek = dateObj.getDay(); 
+                const isoDay = dayOfWeek === 0 ? 7 : dayOfWeek; // Lun=1 ... Dom=7
+                if (task.daysOfWeek.includes(isoDay)) shouldShow = true;
+            }
+            else if (task.period === 'alternate') {
+                // d % 2 !== 0 mostra i giorni dispari (1, 3, 5...)
+                if (d % 2 !== 0) shouldShow = true;
+            }
+
+            if (shouldShow) {
+                if (isPast) {
+                    // Visualizzazione per i giorni passati: Spunta o Croce
+                    const status = dayData ? dayData[task.id] : false;
+                    const symbol = document.createElement('span');
+                    symbol.textContent = status ? '✔️' : '✖️';
+                    symbol.style.fontSize = '0.7rem';
+                    symbol.style.display = 'block';
+                    symbol.style.opacity = status ? '1' : '0.4';
+                    cell.appendChild(symbol);
+                } else {
+                    // Visualizzazione per oggi/futuro: Pallino blu
+                    const dot = document.createElement('div');
+                    dot.className = 'future-dot';
+                    dotsContainer.appendChild(dot);
+                }
+            }
+        });
+
+        if (!isPast) cell.appendChild(dotsContainer);
+        daysContainer.appendChild(cell);
+    }
+}
+
+        function selectDate(date) {
+            selectedDate = date;
+            renderCalendar(); // To update selection highlight
+            renderDayView();
+            
+            // Switch tab to day view automatically
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.querySelector('[data-target="dayView"]').classList.add('active');
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            document.getElementById('dayView').classList.add('active');
+        }
+
+        function renderDayView() {
+            const dateKey = formatKey(selectedDate);
+            selectedDayLabel.textContent = selectedDate.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+            
+            const container = document.getElementById('taskList');
+            container.innerHTML = '';
+
+            tasks.forEach(task => {
+                let shouldShow = false;
+
+                if (task.period === 'monthly') {
+                    const diffTime = Math.abs(selectedDate - new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    if (diffDays === 0 || (diffDays > 0 && diffDays % 30 === 0)) shouldShow = true;
+                } 
+                else if (task.period === 'weekly') {
+                    const dayOfWeek = selectedDate.getDay();
+                    const adjustedDay = dayOfWeek === 0 ? 7 : dayOfWeek;
+                    if (task.daysOfWeek.includes(adjustedDay)) shouldShow = true;
+                }
+                else if (task.period === 'alternate') {
+                    if (selectedDate.getDate() % 2 !== 0) shouldShow = true;
+                }
+
+                if (shouldShow) {
+                    const completed = getTaskStatus(dateKey, task.id);
+                    const card = document.createElement('div');
+                    card.className = `task-card ${completed ? 'completed' : ''}`;
+                    
+                    card.innerHTML = `
+                        <div class="task-icon">
+                            ${task.period === 'monthly' ? '🛁' : task.period === 'weekly' ? '🧪' : '🫧'}
+                        </div>
+                        <div class="task-info">
+                            <div class="task-title">${task.title}</div>
+                            <div class="task-desc">${task.desc}</div>
+                        </div>
+                        <div class="check-btn" onclick="toggleTask('${dateKey}', '${task.id}', this)">
+                            ${completed ? '✓' : ''}
+                        </div>
+                    `;
+                    container.appendChild(card);
+                }
+            });
+        }
+
+        function toggleTask(dateKey, taskId, btnElement) {
+            const card = btnElement.parentElement;
+            card.classList.toggle('completed');
+            btnElement.textContent = card.classList.contains('completed') ? '✓' : '';
+
+            saveSchedule(dateKey, { [taskId]: card.classList.contains('completed') });
+            showToast();
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        function createBubbles() {
+            const container = document.getElementById('bubbles');
+            for(let i=0; i<10; i++) {
+                const b = document.createElement('div');
+                b.className = 'bubble';
+                const size = Math.random() * 40 + 10;
+                b.style.width = `${size}px`;
+                b.style.height = `${size}px`;
+                b.style.left = `${Math.random() * 100}%`;
+                b.style.top = `${Math.random() * 100}%`;
+                b.style.animationDelay = `${Math.random() * 5}s`;
+                b.style.animationDuration = `${Math.random() * 5 + 5}s`;
+                container.appendChild(b);
+            }
+        }
+
+        // Avvio
+        createBubbles();
+        init();
+
+    </script>
+</body>
+</html>
