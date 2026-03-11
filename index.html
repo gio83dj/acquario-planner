@@ -363,11 +363,23 @@
     <header>
         <h1>Manutenzione Acquario</h1>
         <div class="current-date" id="headerDate">Caricamento...</div>
+		<div style="margin-top: 24px; text-align: center; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+				<button id="exportBtn" style="padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer;">
+					Esporta dati
+				</button>
+				<label for="importFile" style="padding: 12px 24px; background: var(--primary-light); color: white; border-radius: 12px; font-weight: 600; cursor: pointer;">
+					Importa dati
+				</label>
+				<input type="file" id="importFile" accept=".json" style="display: none;">
+			</div>
     </header>
 
     <main>
         <!-- CALENDARIO MENSILE -->
         <section id="monthView" class="view-section active">
+		
+			
+			
             <div class="calendar-header">
                 <button class="month-nav-btn" id="prevMonth">&lt;</button>
                 <h2 id="currentMonthLabel">Mese</h2>
@@ -528,6 +540,65 @@
 			renderHeader();
 			renderCalendar();
 			
+			
+			// ── Esporta ────────────────────────────────────────────────
+		document.getElementById('exportBtn')?.addEventListener('click', () => {
+			const data = localStorage.getItem('aquarium_schedule');
+			if (!data || data === '{}') {
+				showToastCustom("Non ci sono dati da esportare");
+				return;
+			}
+
+			const blob = new Blob([data], { type: 'application/json' });
+			const url = URL.createObjectURL(blob);
+			
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `acquario-manutenzione-${new Date().toISOString().slice(0,10)}.json`;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+
+			showToastCustom("Dati esportati!");
+		});
+
+		// ── Importa ────────────────────────────────────────────────
+		document.getElementById('importFile')?.addEventListener('change', (e) => {
+			const file = e.target.files[0];
+			if (!file) return;
+
+			const reader = new FileReader();
+			reader.onload = (event) => {
+				try {
+					const importedData = JSON.parse(event.target.result);
+					
+					// Controllo basilare (opzionale ma consigliato)
+					if (typeof importedData !== 'object' || importedData === null) {
+						throw new Error("File non valido");
+					}
+
+					localStorage.setItem('aquarium_schedule', JSON.stringify(importedData));
+					
+					// Ricarica tutto
+					renderCalendar();
+					if (document.getElementById('dayView').classList.contains('active')) {
+						renderDayView();
+					}
+
+					showToastCustom("Dati importati con successo!");
+				} catch (err) {
+					showToastCustom("Errore: file non valido o corrotto");
+					console.error(err);
+				}
+			};
+			reader.readAsText(file);
+
+			// Resetta input per permettere di ricaricare lo stesso file
+			e.target.value = '';
+		});
+
+
 			// Event Listeners Nav   ← questa parte DEVE rimanere come era prima
 			document.querySelectorAll('.nav-item').forEach(item => {
 				item.addEventListener('click', () => {
