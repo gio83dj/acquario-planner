@@ -157,14 +157,29 @@
             transition: all 0.2s;
         }
 
-        .day-cell:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
         .day-cell.today {
-            border-color: var(--accent);
-            box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
-        }
+			border-color: var(--accent);
+			box-shadow: 0 0 12px rgba(0, 229, 255, 0.5);
+			background: linear-gradient(135deg, rgba(0, 229, 255, 0.12), rgba(0, 229, 255, 0.05));
+			font-weight: 700;
+			font-size: 1.1rem;              /* numero più grande */
+			color: var(--accent);           /* testo cyan brillante */
+			transform: scale(1.05);         /* leggermente ingrandito */
+			transition: all 0.3s ease;
+			animation: pulse-glow 3s infinite ease-in-out;
+		}
+
+		.day-cell.today:hover {
+			transform: scale(1.08);
+			box-shadow: 0 0 20px rgba(0, 229, 255, 0.7);
+		}
+
+		@keyframes pulse-glow {
+			0% { box-shadow: 0 0 12px rgba(0, 229, 255, 0.5); }
+			50% { box-shadow: 0 0 25px rgba(0, 229, 255, 0.9); }
+			100% { box-shadow: 0 0 12px rgba(0, 229, 255, 0.5); }
+		}
+
 
         .day-cell.selected {
             background: var(--primary);
@@ -357,6 +372,37 @@
             align-items: center;
             gap: 4px;
         }
+		
+		.current-date {
+			margin-top: 8px;
+			font-size: 1.1rem;                  /* più grande del precedente 0.9rem */
+			font-weight: 700;                   /* grassetto deciso */
+			color: var(--accent);               /* cyan brillante #00e5ff */
+			letter-spacing: 0.8px;
+			text-shadow: 
+				0 0 8px rgba(0, 229, 255, 0.6), 
+				0 0 15px rgba(0, 229, 255, 0.3); /* glow morbido */
+			
+			padding: 6px 14px;
+			border-radius: 12px;
+			display: inline-block;
+			
+			transition: all 0.4s ease;
+			animation: soft-pulse 6s infinite ease-in-out;
+		}
+		@keyframes soft-pulse {
+			0%, 100% { opacity: 1; }
+			50% { opacity: 0.25; }
+		}
+
+
+		.current-date:hover {
+			transform: scale(1.02);
+			text-shadow: 
+				0 0 12px rgba(0, 229, 255, 0.9), 
+				0 0 20px rgba(0, 229, 255, 0.5);
+			box-shadow: 0 4px 15px rgba(0, 229, 255, 0.25);
+		}
 
     </style>
 </head>
@@ -366,8 +412,10 @@
     <div id="bubbles"></div>
 
     <header>
-        <h1>Manutenzione Acquario</h1>
-        <div class="current-date" id="headerDate">Caricamento...</div>
+        <h1>🐠🐟 Manutenzione Acquario 🌱🌿</h1>
+        <div style="text-align: center; margin-top: 5px;">
+			<div class="current-date" id="headerDate">Caricamento...</div>
+		</div>
 		<div style="margin-top: 12px; text-align: center; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
 				<button id="exportBtn" style="padding: 12px 12px; background: var(--primary); color: white; border: none; border-radius: 18px; font-weight: 600; cursor: pointer;">
 					Esporta dati
@@ -454,19 +502,17 @@
             {
                 id: 'water',
                 title: 'Cambio Acqua',
-                desc: '2 bottiglie e mezzo Flourish Excel',
+                desc: '2 tappi e mezzo Flourish Excel',
                 period: 'monthly',
                 offsetDays: 0 // Prima volta: 1st day, poi ogni 30
             },
             {
-                id: 'micro',
-                title: 'Dosaggio Flourish',
-                desc: 'Microelementi (2 volte a settimana)',
-                period: 'weekly',
-                // Giorni della settimana (0=Lun, 1=Mar, ... 6=Dom)
-                // Esempio: Lunedì (0) e Giovedì (3)
-                daysOfWeek: [0, 3] 
-            },
+				id: 'micro',
+				title: 'Dosaggio Flourish',
+				desc: 'Microelementi (Ogni 3 giorni)',
+				period: 'monthly-days',   // cambiamo period per riconoscerlo
+				days: [1,4,7,10,13,16,19,22,25,28]
+			},
             {
                 id: 'excel',
                 title: 'Dosaggio Excel',
@@ -633,16 +679,30 @@
 			}
 
 			// Listener per pulizia filtri
-			const filterBtn = document.getElementById('addFilterCleanBtn');
-			if (filterBtn) {
-				filterBtn.addEventListener('click', () => {
-					const dateKey = formatKey(selectedDate);
-					markFilterCleaned(dateKey);
-					showToastCustom("Pulizia filtri registrata!");
-					renderCalendar();
-					renderDayView();
-				});
-			}
+			document.getElementById('addFilterCleanBtn').addEventListener('click', () => {
+    const dateKey = formatKey(selectedDate);
+    const currentlyCleaned = wasFilterCleaned(dateKey);
+
+    if (currentlyCleaned) {
+        // Rimuovi la marcatura
+        const all = getSchedule();
+        if (all[dateKey]) {
+            delete all[dateKey].filterCleaned;
+            if (Object.keys(all[dateKey]).length === 0) {
+                delete all[dateKey];
+            }
+            localStorage.setItem('aquarium_schedule', JSON.stringify(all));
+        }
+        showToastCustom("Pulizia filtri rimossa");
+    } else {
+        markFilterCleaned(dateKey);
+        showToastCustom("Pulizia filtri registrata!");
+    }
+
+    renderCalendar();
+    renderDayView();  // aggiorna il bottone
+});
+			
 		}
 
         function changeMonth(delta) {
@@ -747,7 +807,9 @@
 						if (task.daysOfWeek.includes(isoDay)) shouldShow = true;
 					} else if (task.period === 'alternate') {
 						if (d % 2 !== 0) shouldShow = true;
-					}
+					} else if (task.period === 'monthly-days') {          // ← nuovo ramo
+					shouldShow = task.days.includes(d);
+				}
 
 					if (shouldShow) {
 						hasAnyTaskIndicator = true;
@@ -849,6 +911,9 @@
 				else if (task.period === 'alternate') {
 					if (selectedDate.getDate() % 2 !== 0) shouldShow = true;
 				}
+				else if (task.period === 'monthly-days') {
+					shouldShow = task.days.includes(selectedDate.getDate());
+				}
 
 				if (shouldShow) {
 					const completed = getTaskStatus(dateKey, task.id);
@@ -875,16 +940,21 @@
 			document.getElementById('dayNotes').value = getNotes(dateKey);
 
 			// Mostra se filtri puliti oggi
-			const filterBtn = document.getElementById('addFilterCleanBtn');
-			if (wasFilterCleaned(dateKey)) {
-				filterBtn.textContent = "Filtri puliti ✓";
-				filterBtn.disabled = true;
-				filterBtn.style.opacity = "0.6";
-			} else {
-				filterBtn.textContent = "✓ Pulizia filtri oggi";
-				filterBtn.disabled = false;
-				filterBtn.style.opacity = "1";
-			}
+const filterBtn = document.getElementById('addFilterCleanBtn');
+const isCleaned = wasFilterCleaned(dateKey);
+
+if (isCleaned) {
+    filterBtn.textContent = "Filtri puliti ✓ (clicca per rimuovere)";
+    filterBtn.style.background = 'rgba(105,240,174,0.4)';
+    filterBtn.style.color = 'var(--success)';
+    filterBtn.style.borderColor = 'var(--success)';
+} else {
+    filterBtn.textContent = "✓ Pulizia filtri oggi";
+    filterBtn.style.background = 'rgba(105,240,174,0.2)';
+    filterBtn.style.color = 'var(--success)';
+    filterBtn.style.borderColor = 'var(--success)';
+}
+filterBtn.disabled = false;  // sempre cliccabile ora
 		}
 
         function toggleTask(dateKey, taskId, btnElement) {
@@ -936,6 +1006,23 @@
         // Avvio
         createBubbles();
         init();
+		// Gestione tasto back del browser/cellulare
+		window.addEventListener('popstate', (event) => {
+			if (document.getElementById('dayView').classList.contains('active')) {
+				// Se siamo nella vista giorno → torniamo al mese
+				document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+				document.querySelector('[data-target="monthView"]').classList.add('active');
+				
+				document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+				document.getElementById('monthView').classList.add('active');
+				
+				// Impediamo il back reale della pagina (opzionale)
+				history.pushState(null, '', window.location.href);
+			}
+		});
+
+// Inizializza history per intercettare il primo back
+history.pushState(null, '', window.location.href);
     </script>
 </body>
 </html>
