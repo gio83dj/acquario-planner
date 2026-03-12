@@ -126,16 +126,21 @@
 
         .calendar-grid {
             display: grid;
-            grid-template-columns: repeat(7, 1fr);
+            grid-template-columns: repeat(7, minmax(40px, 1fr));   /* ← chiave: minimo 40px per colonna */
             gap: 8px;
             text-align: center;
         }
 
         .weekday {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-bottom: 5px;
-        }
+			font-size: 0.75rem;
+			color: var(--text-muted);
+			margin-bottom: 5px;
+			white-space: nowrap;          /* impedisce a capo */
+			overflow: hidden;             /* nasconde testo troppo lungo */
+			text-overflow: ellipsis;      /* mette ... se proprio non entra */
+			min-width: 0;                 /* permette di restringersi davvero */
+		}
+
 
         .day-cell {
             aspect-ratio: 1;
@@ -173,33 +178,33 @@
             margin-top: 4px;
         }
 
-/* Indicator dots for tasks (solo per i futuri) */
-.future-dot {
-    width: 6px;
-    height: 6px;
-    background-color: var(--primary-light);
-    border-radius: 50%;
-}
+		/* Indicator dots for tasks (solo per i futuri) */
+		.future-dot {
+			width: 10px;
+			height: 10px;
+			background-color: var(--primary-light);
+			border-radius: 50%;
+		}
 
-.check-indicator {
-    width: 10px;
-    height: 10px;
-    background-color: var(--primary-light); /* BLU per "Da Fare" */
-    border-radius: 3px;
-    color: white;
-    font-size: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+		.check-indicator {
+			width: 10px;
+			height: 10px;
+			background-color: var(--primary-light); /* BLU per "Da Fare" */
+			border-radius: 3px;
+			color: white;
+			font-size: 9px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
 
-.check-indicator.completed {
-    width: 10px;
-    height: 10px;
-    background-color: var(--success); /* VERDE per "Fatto" */
-    border-radius: 50%;
-    font-size: 9px;
-}
+		.check-indicator.completed {
+			width: 10px;
+			height: 10px;
+			background-color: var(--success); /* VERDE per "Fatto" */
+			border-radius: 50%;
+			font-size: 9px;
+		}
 
         .dot {
             width: 4px;
@@ -363,11 +368,11 @@
     <header>
         <h1>Manutenzione Acquario</h1>
         <div class="current-date" id="headerDate">Caricamento...</div>
-		<div style="margin-top: 24px; text-align: center; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-				<button id="exportBtn" style="padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer;">
+		<div style="margin-top: 12px; text-align: center; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+				<button id="exportBtn" style="padding: 12px 12px; background: var(--primary); color: white; border: none; border-radius: 18px; font-weight: 600; cursor: pointer;">
 					Esporta dati
 				</button>
-				<label for="importFile" style="padding: 12px 24px; background: var(--primary-light); color: white; border-radius: 12px; font-weight: 600; cursor: pointer;">
+				<label for="importFile" style="padding: 12px 12px; background: var(--primary-light); color: white; border: none;border-radius: 18px; font-weight: 600; cursor: pointer;">
 					Importa dati
 				</label>
 				<input type="file" id="importFile" accept=".json" style="display: none;">
@@ -651,128 +656,160 @@
         }
 
         function renderCalendar() {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    // Header del mese in italiano
-    monthLabel.textContent = new Date(year, month).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
-    daysContainer.innerHTML = '';
+			const year = currentDate.getFullYear();
+			const month = currentDate.getMonth();
+			
+			// Header del mese in italiano
+			monthLabel.textContent = new Date(year, month).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+			daysContainer.innerHTML = '';
 
-    // --- LOGICA ALLINEAMENTO SETTIMANA (Lunedì come primo giorno) ---
-    // getDay() restituisce: 0 (Dom), 1 (Lun), 2 (Mar), 3 (Mer), 4 (Gio), 5 (Ven), 6 (Sab)
-    let firstDayIndex = new Date(year, month, 1).getDay(); 
-    
-    // Trasformiamo la Domenica (0) in 7, così Lunedì è 1, Martedì è 2... Sabato è 6, Domenica è 7.
-    const adjustedFirstDay = firstDayIndex === 0 ? 7 : firstDayIndex;
-    
-    // Calcoliamo quanti spazi vuoti servono prima del 1° del mese
-    // Se è Lunedì (1), servono 0 spazi. Se è Martedì (2), serve 1 spazio, ecc.
-    const spacerCount = adjustedFirstDay - 1;
+			// --- LOGICA ALLINEAMENTO SETTIMANA (Lunedì come primo giorno) ---
+			let firstDayIndex = new Date(year, month, 1).getDay(); 
+			const adjustedFirstDay = firstDayIndex === 0 ? 7 : firstDayIndex;
+			const spacerCount = adjustedFirstDay - 1;
 
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
+			const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    // 1. Creazione degli spazi vuoti (per allineare correttamente il 1° del mese)
-    for (let i = 0; i < spacerCount; i++) {
-        const emptyCell = document.createElement('div');
-        emptyCell.className = 'day-cell empty'; // Aggiunta classe per eventuale styling
-        daysContainer.appendChild(emptyCell);
-    }
+			// Definizione di "oggi" UNA SOLA VOLTA, con ore azzerate
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
 
-    // 2. Creazione dei giorni del mese
-    for (let d = 1; d <= daysInMonth; d++) {
-        const dateObj = new Date(year, month, d);
-        const dateKey = formatKey(dateObj);
-        
-        // Controllo se il giorno è nel passato (rispetto a mezzanotte di oggi)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const isPast = dateObj < today;
+			// 1. Spazi vuoti prima del 1° del mese
+			for (let i = 0; i < spacerCount; i++) {
+				const emptyCell = document.createElement('div');
+				emptyCell.className = 'day-cell empty';
+				daysContainer.appendChild(emptyCell);
+			}
 
-        const cell = document.createElement('div');
-        cell.className = `day-cell ${isToday(dateObj) ? 'today' : ''} ${dateKey === formatKey(selectedDate) ? 'selected' : ''}`;
-        cell.textContent = d;
-        cell.onclick = () => selectDate(dateObj);
+			// 2. Giorni del mese
+			for (let d = 1; d <= daysInMonth; d++) {
+				const dateObj = new Date(year, month, d);
+				const dateKey = formatKey(dateObj);
+				
+				const isPast = dateObj < today;
+				const isTodayCell = isToday(dateObj);
 
-        // --- LOGICA TASK ---
-        const dayData = getSchedule()[dateKey];
-        const dotsContainer = document.createElement('div');
-		
-		// Indicatore note
-		if (getNotes(dateKey)) {
-			const noteIcon = document.createElement('span');
-			noteIcon.textContent = '📝';
-			noteIcon.style.fontSize = '0.9rem';
-			noteIcon.style.marginTop = '4px';
-			cell.appendChild(noteIcon);
-		}
+				const cell = document.createElement('div');
+				cell.className = `day-cell ${isTodayCell ? 'today' : ''} ${dateKey === formatKey(selectedDate) ? 'selected' : ''}`;
+				cell.textContent = d;
+				cell.onclick = () => selectDate(dateObj);
 
-		// Indicatore pulizia filtri
-		if (wasFilterCleaned(dateKey)) {
-			const filterIcon = document.createElement('span');
-			filterIcon.textContent = '🧼';
-			filterIcon.style.fontSize = '0.9rem';
-			filterIcon.style.marginTop = '4px';
-			cell.appendChild(filterIcon);
-		}
-		
-        dotsContainer.className = 'task-dots';
+				// ────────────────────────────────────────────────────────────────
+				// Container superiore: note + filtri puliti
+				// ────────────────────────────────────────────────────────────────
+				const topIndicators = document.createElement('div');
+				topIndicators.style.display = 'flex';
+				topIndicators.style.justifyContent = 'center';
+				topIndicators.style.gap = '6px';
+				topIndicators.style.marginTop = '2px';
+				topIndicators.style.fontSize = '0.85rem';
+				topIndicators.style.lineHeight = '1';
 
-        tasks.forEach(task => {
-            let shouldShow = false;
-
-            // Logica ricorrenze migliorata
-            if (task.period === 'monthly') {
-                // Esempio: il primo giorno di ogni mese
-                if (d === 1) shouldShow = true; 
-            } 
-            else if (task.period === 'weekly') {
-                const dayOfWeek = dateObj.getDay(); 
-                const isoDay = dayOfWeek === 0 ? 7 : dayOfWeek; // Lun=1 ... Dom=7
-                if (task.daysOfWeek.includes(isoDay)) shouldShow = true;
-            }
-            else if (task.period === 'alternate') {
-                // d % 2 !== 0 mostra i giorni dispari (1, 3, 5...)
-                if (d % 2 !== 0) shouldShow = true;
-            }
-
-            if (shouldShow) {
-                if (isPast) {
-                    // Visualizzazione per i giorni passati: Spunta o Croce
-                    const status = dayData ? dayData[task.id] : false;
-                    const symbol = document.createElement('span');
-                    symbol.textContent = status ? '✔️' : '✖️';
-                    symbol.style.fontSize = '0.7rem';
-                    symbol.style.display = 'block';
-                    symbol.style.opacity = status ? '1' : '0.4';
-                    cell.appendChild(symbol);
-                } else {
-					// Oggi o futuro
-					const isCompleted = getTaskStatus(dateKey, task.id);  // true se già ✓
-
-					if (isCompleted) {
-						// Mostra ✓ verde per completato
-						const check = document.createElement('span');
-						check.textContent = '✓';
-						check.style.fontSize = '0.9rem';
-						check.style.color = 'var(--success)';           // verde
-						check.style.marginTop = '4px';
-						check.style.fontWeight = 'bold';
-						dotsContainer.appendChild(check);
-					} else {
-						// Ancora da fare → puntino blu classico
-						const dot = document.createElement('div');
-						dot.className = 'future-dot';
-						dotsContainer.appendChild(dot);
-					}
+				if (getNotes(dateKey)) {
+					const noteIcon = document.createElement('span');
+					noteIcon.textContent = '📝';
+					noteIcon.style.fontSize = '0.9rem';
+					topIndicators.appendChild(noteIcon);
 				}
-            }
-        });
 
-        if (!isPast) cell.appendChild(dotsContainer);
-        daysContainer.appendChild(cell);
-    }
-}
+				if (wasFilterCleaned(dateKey)) {
+					const filterIcon = document.createElement('span');
+					filterIcon.textContent = '🧼';
+					filterIcon.style.fontSize = '0.9rem';
+					topIndicators.appendChild(filterIcon);
+				}
 
+				if (topIndicators.children.length > 0) {
+					cell.appendChild(topIndicators);
+				}
+
+				// ────────────────────────────────────────────────────────────────
+				// Container inferiore: indicatori task (✓ / ✖ / puntini)
+				// ────────────────────────────────────────────────────────────────
+				const bottomIndicators = document.createElement('div');
+				bottomIndicators.className = 'task-dots';
+				bottomIndicators.style.display = 'flex';
+				bottomIndicators.style.justifyContent = 'center';
+				bottomIndicators.style.gap = '5px';
+				bottomIndicators.style.marginTop = '3px';
+				bottomIndicators.style.marginBottom = '2px';
+
+				let hasAnyTaskIndicator = false;
+
+				tasks.forEach(task => {
+					let shouldShow = false;
+
+					if (task.period === 'monthly') {
+						if (d === 1) shouldShow = true;
+					} else if (task.period === 'weekly') {
+						const dayOfWeek = dateObj.getDay();
+						const isoDay = dayOfWeek === 0 ? 7 : dayOfWeek;
+						if (task.daysOfWeek.includes(isoDay)) shouldShow = true;
+					} else if (task.period === 'alternate') {
+						if (d % 2 !== 0) shouldShow = true;
+					}
+
+					if (shouldShow) {
+						hasAnyTaskIndicator = true;
+
+						if (isPast) {
+							const status = getTaskStatus(dateKey, task.id);
+							const symbol = document.createElement('span');
+							symbol.textContent = status ? '✓' : 'X';
+							symbol.style.color = status ? 'var(--success)' : 'var(--danger)';
+							symbol.style.fontSize = '0.80rem';
+							symbol.style.fontWeight = '600';
+							bottomIndicators.appendChild(symbol);
+						} else {
+							// Oggi o futuro
+							const isCompleted = getTaskStatus(dateKey, task.id);
+
+							if (isCompleted) {
+								const check = document.createElement('span');
+								check.textContent = '✓';
+								check.style.color = 'var(--success)';
+								check.style.fontSize = '0.8rem';
+								check.style.fontWeight = 'bold';
+								bottomIndicators.appendChild(check);
+							} else {
+								// Ancora da fare → icona del task
+								let taskIcon = '';
+								
+								if (task.id === 'micro') {
+									taskIcon = '🥣';   // Flourish microelementi
+								} else if (task.id === 'excel') {
+									taskIcon = '🧪';   // Excel carbonio
+								} else if (task.id === 'water') {
+									taskIcon = '🛁';   // Cambio acqua (opzionale, se vuoi differenziarlo)
+								}
+
+								if (taskIcon) {
+									const iconElem = document.createElement('span');
+									iconElem.textContent = taskIcon;
+									iconElem.style.fontSize = '1.1rem';          // un po' più grande per visibilità
+									iconElem.style.lineHeight = '1';
+									bottomIndicators.appendChild(iconElem);
+								} else {
+									// Fallback per eventuali altri task futuri
+									const dot = document.createElement('div');
+									dot.className = 'future-dot';
+									bottomIndicators.appendChild(dot);
+								}
+							}
+						}
+					}
+				});
+
+				// Aggiungiamo il container solo se ci sono indicatori task
+				if (hasAnyTaskIndicator && bottomIndicators.children.length > 0) {
+					cell.appendChild(bottomIndicators);
+				}
+
+				// Aggiungiamo la cella al contenitore
+				daysContainer.appendChild(cell);
+			}
+		}
+		
         function selectDate(date) {
             selectedDate = date;
             renderCalendar(); // To update selection highlight
@@ -820,7 +857,7 @@
 					
 					card.innerHTML = `
 						<div class="task-icon">
-							${task.period === 'monthly' ? '🛁' : task.period === 'weekly' ? '🧪' : '🫧'}
+							${task.period === 'monthly' ? '🛁' : task.period === 'weekly' ? '🥣' : '🧪'}
 						</div>
 						<div class="task-info">
 							<div class="task-title">${task.title}</div>
