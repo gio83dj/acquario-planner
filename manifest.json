@@ -1,6 +1,6 @@
 {
-  "name": "Manutenzione Acquario",
-  "short_name": "Acquario",
+  "name": "Manutenzione Acquario by Giorgio L.",
+  "short_name": "Manutenzione Acquario",
   "description": "Gestione manutenzione acquario con piante",
   "start_url": "./index.html",
   "display": "standalone",
