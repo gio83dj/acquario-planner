@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Manutenzione Acquario con piante</title>
+	<link rel="manifest" href="manifest.json">
+	<meta name="theme-color" content="#00e5ff">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="apple-touch-icon" href="icon-192.png">
+    <title>Manutenzione Acquario con piante by Giorgio L.</title>
     <style>
         :root {
             --primary: #006064; /* Deep Cyan */
@@ -462,8 +467,13 @@
             </div>
 
             <div class="legend">
-                <span><span class="dot"></span> Da fare</span>
-                <span><span class="dot missing"></span> Fatto</span>
+                <span>✓ Fatto</span>
+				<span>X Dimenticato</span>
+				<span>🌱 Flourish (Microelementi)</span>
+				<span>🧪 Excel CO₂ (Carbonio)</span>
+				<span>🧼 Filtri puliti</span>
+				<span>🚿 Cambio acqua</span>
+				
             </div>
         </section>
 
@@ -724,16 +734,38 @@
         }
 
         function renderHeader() {
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            headerDate.textContent = new Date().toLocaleDateString('it-IT', options);
-        }
+			const now = new Date();
+			
+			// Formato: GIOVEDÌ 12 MARZO 2026   19:45:23
+			const optionsDate = { 
+				weekday: 'long', 
+				day: 'numeric', 
+				month: 'long', 
+				year: 'numeric' 
+			};
+			
+			const dateStr = now.toLocaleDateString('it-IT', optionsDate).toUpperCase();
+			const timeStr = now.toLocaleTimeString('it-IT', { 
+				hour: '2-digit', 
+				minute: '2-digit', 
+				second: '2-digit' 
+			});
+			
+			// Orologio con secondi che si aggiorna
+			headerDate.innerHTML = `
+				${dateStr}<br>
+				<span style="font-size: 1.3rem; letter-spacing: 2px; color: var(--accent);">
+					${timeStr} 🕒
+				</span>
+			`;
+		}
 
         function renderCalendar() {
 			const year = currentDate.getFullYear();
 			const month = currentDate.getMonth();
 			
 			// Header del mese in italiano
-			monthLabel.textContent = new Date(year, month).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+			monthLabel.textContent = new Date(year, month).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }).toUpperCase();
 			daysContainer.innerHTML = '';
 
 			// --- LOGICA ALLINEAMENTO SETTIMANA (Lunedì come primo giorno) ---
@@ -935,7 +967,7 @@
 					
 					card.innerHTML = `
 						<div class="task-icon">
-							${task.period === 'monthly' ? '🛁' : task.period === 'weekly' ? '🥣' : '🧪'}
+							${task.period === 'monthly' ? '🚿' : task.period === 'weekly' ? '🥣' : '🧪'}
 						</div>
 						<div class="task-info">
 							<div class="task-title">${task.title}</div>
@@ -1073,7 +1105,7 @@
 							iconElem.style.fontWeight = 'bold';
 						} else {
 							iconElem = document.createElement('span');
-							if (task.id === 'water') iconElem.textContent = '🛁 Cambio acqua';
+							if (task.id === 'water') iconElem.textContent = '🚿 Cambio acqua';
 							else if (task.id === 'micro') iconElem.textContent = '🥣 Micronutrienti Flourish';
 							else if (task.id === 'excel') iconElem.textContent = '🧪 CO₂ Excel';
 							iconElem.style.fontSize = '1.3rem';
@@ -1104,14 +1136,14 @@
 				// Filtri puliti
 				if (wasFilterCleaned(dateKey)) {
 					const filterTag = document.createElement('div');
-					filterTag.textContent = '🧼 Filtri puliti';
+					filterTag.textContent = '🧼 Filtri puliti!';
 					filterTag.style.cssText = `
 						display: inline-block;
-						background: rgba(105,240,174,0.2);
+						background: rgba(178,255,255,0.4);
 						color: var(--success);
 						padding: 4px 12px;
 						border-radius: 20px;
-						font-size: 0.85rem;
+						font-size: 1.85rem;
 						margin-top: 8px;
 					`;
 					rightCol.appendChild(filterTag);
@@ -1304,6 +1336,9 @@
 				}
 			}
 		}, 60000); // ogni minuto
+		
+		// Aggiorna orologio in tempo reale
+		setInterval(renderHeader, 1000);
     </script>
 </body>
 </html>
