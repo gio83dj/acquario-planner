@@ -408,6 +408,12 @@
 				0 0 20px rgba(0, 229, 255, 0.5);
 			box-shadow: 0 4px 15px rgba(0, 229, 255, 0.25);
 		}
+		
+		.weekday:last-child {
+			color: var(--danger) !important;
+			font-weight: 700 !important;
+			border-color: rgba(255, 82, 82, 0.4);
+		}
 
     </style>
 </head>
@@ -795,9 +801,18 @@
 				const isTodayCell = isToday(dateObj);
 
 				const cell = document.createElement('div');
-				cell.className = `day-cell ${isTodayCell ? 'today' : ''} ${dateKey === formatKey(selectedDate) ? 'selected' : ''}`;
+				if (dateObj.getDay() === 0) {
+					cell.style.color = 'var(--danger)';
+					cell.style.fontWeight = '700';
+				}
+				cell.className = `day-cell ${isToday(dateObj) ? 'today' : ''} ${dateKey === formatKey(selectedDate) ? 'selected' : ''}`;
 				cell.textContent = d;
-				cell.onclick = () => selectDate(dateObj);
+
+				// Aggiungi stile per domenica (solo il numero in rosso)
+				if (dateObj.getDay() === 0) {
+					cell.style.color = 'var(--danger)';
+					cell.style.fontWeight = '600';
+				}
 
 				// ────────────────────────────────────────────────────────────────
 				// Container superiore: note + filtri puliti
@@ -1007,15 +1022,30 @@
 			container.innerHTML = '';
 
 			const today = new Date();
-			today.setHours(0, 0, 0, 0);
+			
+			const now = new Date();
+			const year = now.getFullYear();
+			const month = now.getMonth();  // mese corrente (0-11)
 
-			// Mostra i prossimi 31 giorni (o più/meno, decidi tu)
-			for (let offset = -3; offset <= 30; offset++) {  // da 3 giorni fa a 60 giorni dopo
-				const dateObj = new Date(today);
-				dateObj.setDate(today.getDate() + offset);
+			// Primo giorno del mese
+			const firstDay = new Date(year, month, 1);
+			// Ultimo giorno del mese (oppure oggi, vedi sotto)
+			const lastDay = new Date(year, month + 1, 0);  // ultimo giorno del mese
+
+			// Se vuoi mostrare SOLO fino a oggi → usa questo:
+			const endDate = lastDay;
+			endDate.setHours(0,0,0,0);
+
+			// Se invece vuoi tutto il mese (anche futuri) → usa lastDay
+
+			const daysInMonth = endDate.getDate();  // fino a oggi
+
+			for (let d = 1; d <= daysInMonth; d++) {
+				const dateObj = new Date(year, month, d);
 				const dateKey = formatKey(dateObj);
-				const isPast = dateObj < today;
-				const isToday = offset === 0;
+				const isPast = dateObj < now;
+				const isToday = d === now.getDate();
+		
 
 				const dayCard = document.createElement('div');
 				dayCard.style.cssText = `
@@ -1037,28 +1067,30 @@
 				}
 
 				// Colonna sinistra: numero giorno + nome giorno
+				// Colonna sinistra: numero + giorno settimana
 				const leftCol = document.createElement('div');
 				leftCol.style.cssText = `
 					min-width: 70px;
 					text-align: center;
 					padding: 8px 0;
 				`;
-
+				// Numero giorno
 				const dayNum = document.createElement('div');
-				dayNum.textContent = dateObj.getDate();
+				dayNum.textContent = d;
 				dayNum.style.cssText = `
 					font-size: 2.2rem;
 					font-weight: 700;
 					line-height: 1;
-					color: ${isToday ? 'var(--accent)' : 'white'};
+					color: ${isToday ? 'var(--accent)' : (dateObj.getDay() === 0 ? 'var(--danger)' : 'white')};
 				`;
-
+				// Nome giorno
 				const dayName = document.createElement('div');
 				dayName.textContent = dateObj.toLocaleDateString('it-IT', { weekday: 'short' }).toUpperCase();
 				dayName.style.cssText = `
 					font-size: 0.9rem;
 					color: var(--text-muted);
 					margin-top: 4px;
+					color: ${isToday ? 'var(--accent)' : (dateObj.getDay() === 0 ? 'var(--danger)' : 'white')};
 				`;
 
 				leftCol.appendChild(dayNum);
@@ -1099,16 +1131,21 @@
 						let iconElem;
 						if (completed) {
 							iconElem = document.createElement('span');
-							iconElem.textContent = '✓';
+							if (task.id === 'water') iconElem.textContent = '🚿 Cambio acqua: ✓';
+							else if (task.id === 'micro') iconElem.textContent = '🥣 Micronutrienti Flourish: ✓';
+							else if (task.id === 'excel') iconElem.textContent = '🧪 CO₂ Excel: ✓';
 							iconElem.style.color = 'var(--success)';
-							iconElem.style.fontSize = '1.1rem';
-							iconElem.style.fontWeight = 'bold';
+							iconElem.style.fontSize = '1.3rem';
+							
+							// ← Aggiungi questa riga per barrare
+							iconElem.style.textDecoration = 'line-through';
 						} else {
 							iconElem = document.createElement('span');
 							if (task.id === 'water') iconElem.textContent = '🚿 Cambio acqua';
 							else if (task.id === 'micro') iconElem.textContent = '🥣 Micronutrienti Flourish';
 							else if (task.id === 'excel') iconElem.textContent = '🧪 CO₂ Excel';
 							iconElem.style.fontSize = '1.3rem';
+							iconElem.style.fontWeight = 'bold';
 						}
 						indicators.appendChild(iconElem);
 					}
