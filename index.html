@@ -495,6 +495,7 @@
 			<div style="font-weight: 600; margin-bottom: 8px; color: var(--accent);">Note del giorno</div>
 			<textarea id="dayNotes" rows="4" placeholder="Scrivi qui eventuali osservazioni, problemi, misurazioni..." style="width:100%; padding:12px; border-radius:12px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.05); color:white; resize:vertical; font-family:inherit;"></textarea>
 			<button id="saveNotesBtn" style="margin-top:12px; padding:10px 20px; background:var(--primary); color:white; border:none; border-radius:12px; font-weight:600; cursor:pointer;">Salva Note</button>
+			
 		</div>
 
 		<!-- Pulsante pulizia filtri -->
@@ -503,6 +504,12 @@
 				✓ Pulizia filtri oggi
 			</button>
 		</div>
+		<!-- Pulsante cambio acqua -->
+		<div style="margin-top: 12px; text-align: center;">
+				<button id="addWaterChangeBtn" style="padding:10px 16px; background:rgba(0, 229, 255, 0.15); color:var(--accent); border:1px solid var(--accent); border-radius:12px; font-weight:600; cursor:pointer;">
+					🚿 Cambio acqua oggi
+				</button>
+			</div>
         </section>
     </main>
 
@@ -529,12 +536,12 @@
         // Definizione dei compiti
         const tasks = [
             {
-                id: 'water',
-                title: 'Cambio Acqua',
-                desc: '2 tappi e mezzo Flourish Excel',
-                period: 'monthly',
-                offsetDays: 0 // Prima volta: 1st day, poi ogni 30
-            },
+				id: 'water',
+				title: 'Cambio Acqua',
+				desc: '2 tappi e mezzo Flourish Excel',
+				period: 'monthly-days',          // ← importante: usa questo tipo
+				days: [1, 15]                    // ← giorni del mese in cui deve apparire
+			},
             {
 				id: 'micro',
 				title: 'Dosaggio Flourish',
@@ -583,6 +590,18 @@
 			localStorage.setItem('aquarium_schedule', JSON.stringify(all));
 		}
 
+		function markWaterChanged(dateKey) {
+			const all = getSchedule();
+			if (!all[dateKey]) all[dateKey] = {};
+			all[dateKey].waterChanged = true;
+			localStorage.setItem('aquarium_schedule', JSON.stringify(all));
+		}
+
+		function wasWaterChanged(dateKey) {
+			const dayData = getSchedule()[dateKey];
+			return !!dayData?.waterChanged;
+		}
+
 		function wasFilterCleaned(dateKey) {
 			const dayData = getSchedule()[dateKey];
 			return !!dayData?.filterCleaned;
@@ -622,61 +641,61 @@
 			
 			
 			// ── Esporta ────────────────────────────────────────────────
-		document.getElementById('exportBtn')?.addEventListener('click', () => {
-			const data = localStorage.getItem('aquarium_schedule');
-			if (!data || data === '{}') {
-				showToastCustom("Non ci sono dati da esportare");
-				return;
-			}
-
-			const blob = new Blob([data], { type: 'application/json' });
-			const url = URL.createObjectURL(blob);
-			
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = `acquario-manutenzione-${new Date().toISOString().slice(0,10)}.json`;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
-
-			showToastCustom("Dati esportati!");
-		});
-
-		// ── Importa ────────────────────────────────────────────────
-		document.getElementById('importFile')?.addEventListener('change', (e) => {
-			const file = e.target.files[0];
-			if (!file) return;
-
-			const reader = new FileReader();
-			reader.onload = (event) => {
-				try {
-					const importedData = JSON.parse(event.target.result);
-					
-					// Controllo basilare (opzionale ma consigliato)
-					if (typeof importedData !== 'object' || importedData === null) {
-						throw new Error("File non valido");
-					}
-
-					localStorage.setItem('aquarium_schedule', JSON.stringify(importedData));
-					
-					// Ricarica tutto
-					renderCalendar();
-					if (document.getElementById('dayView').classList.contains('active')) {
-						renderDayView();
-					}
-
-					showToastCustom("Dati importati con successo!");
-				} catch (err) {
-					showToastCustom("Errore: file non valido o corrotto");
-					console.error(err);
+			document.getElementById('exportBtn')?.addEventListener('click', () => {
+				const data = localStorage.getItem('aquarium_schedule');
+				if (!data || data === '{}') {
+					showToastCustom("Non ci sono dati da esportare");
+					return;
 				}
-			};
-			reader.readAsText(file);
 
-			// Resetta input per permettere di ricaricare lo stesso file
-			e.target.value = '';
-		});
+				const blob = new Blob([data], { type: 'application/json' });
+				const url = URL.createObjectURL(blob);
+				
+				const a = document.createElement('a');
+				a.href = url;
+				a.download = `acquario-manutenzione-${new Date().toISOString().slice(0,10)}.json`;
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+				URL.revokeObjectURL(url);
+
+				showToastCustom("Dati esportati!");
+			});
+
+			// ── Importa ────────────────────────────────────────────────
+			document.getElementById('importFile')?.addEventListener('change', (e) => {
+				const file = e.target.files[0];
+				if (!file) return;
+
+				const reader = new FileReader();
+				reader.onload = (event) => {
+					try {
+						const importedData = JSON.parse(event.target.result);
+						
+						// Controllo basilare (opzionale ma consigliato)
+						if (typeof importedData !== 'object' || importedData === null) {
+							throw new Error("File non valido");
+						}
+
+						localStorage.setItem('aquarium_schedule', JSON.stringify(importedData));
+						
+						// Ricarica tutto
+						renderCalendar();
+						if (document.getElementById('dayView').classList.contains('active')) {
+							renderDayView();
+						}
+
+						showToastCustom("Dati importati con successo!");
+					} catch (err) {
+						showToastCustom("Errore: file non valido o corrotto");
+						console.error(err);
+					}
+				};
+				reader.readAsText(file);
+
+				// Resetta input per permettere di ricaricare lo stesso file
+				e.target.value = '';
+			});
 
 
 			// Event Listeners Nav   ← questa parte DEVE rimanere come era prima
@@ -709,29 +728,54 @@
 
 			// Listener per pulizia filtri
 			document.getElementById('addFilterCleanBtn').addEventListener('click', () => {
-    const dateKey = formatKey(selectedDate);
-    const currentlyCleaned = wasFilterCleaned(dateKey);
+				const dateKey = formatKey(selectedDate);
+				const currentlyCleaned = wasFilterCleaned(dateKey);
 
-    if (currentlyCleaned) {
-        // Rimuovi la marcatura
-        const all = getSchedule();
-        if (all[dateKey]) {
-            delete all[dateKey].filterCleaned;
-            if (Object.keys(all[dateKey]).length === 0) {
-                delete all[dateKey];
-            }
-            localStorage.setItem('aquarium_schedule', JSON.stringify(all));
-        }
-        showToastCustom("Pulizia filtri rimossa");
-    } else {
-        markFilterCleaned(dateKey);
-        showToastCustom("Pulizia filtri registrata!");
-    }
+				if (currentlyCleaned) {
+					// Rimuovi la marcatura
+					const all = getSchedule();
+					if (all[dateKey]) {
+						delete all[dateKey].filterCleaned;
+						if (Object.keys(all[dateKey]).length === 0) {
+							delete all[dateKey];
+						}
+						localStorage.setItem('aquarium_schedule', JSON.stringify(all));
+					}
+					showToastCustom("Pulizia filtri rimossa");
+				} else {
+					markFilterCleaned(dateKey);
+					showToastCustom("Pulizia filtri registrata!");
+				}
 
-    renderCalendar();
-    renderDayView();  // aggiorna il bottone
-});
+				renderCalendar();
+				renderDayView();  // aggiorna il bottone
+			});
 			
+			// Listener per cambio acqua
+			document.getElementById('addWaterChangeBtn')?.addEventListener('click', () => {
+                const dateKey = formatKey(selectedDate);
+                const currentlyDone = wasWaterChanged(dateKey);            if (currentlyDone) {
+                // Rimuovi
+                const all = getSchedule();
+                if (all[dateKey]) {
+                    delete all[dateKey].waterChanged;
+                    if (Object.keys(all[dateKey]).length === 0) delete all[dateKey];
+                    localStorage.setItem('aquarium_schedule', JSON.stringify(all));
+                }
+                showToastCustom("Cambio acqua rimosso");
+            } else {
+                markWaterChanged(dateKey);
+                showToastCustom("Cambio acqua registrato!");
+            }
+
+            renderCalendar();
+            renderDayView();   // aggiorna il bottone
+            if (document.getElementById('agendaView').classList.contains('active')) {
+                renderAgendaView();
+            }
+        });
+
+
 		}
 
         function changeMonth(delta) {
@@ -824,21 +868,28 @@
 				topIndicators.style.marginTop = '2px';
 				topIndicators.style.fontSize = '0.85rem';
 				topIndicators.style.lineHeight = '1';
-
+				// Note
 				if (getNotes(dateKey)) {
 					const noteIcon = document.createElement('span');
 					noteIcon.textContent = '📝';
 					noteIcon.style.fontSize = '0.7rem';
 					topIndicators.appendChild(noteIcon);
 				}
-
+				// Filtri puliti
 				if (wasFilterCleaned(dateKey)) {
 					const filterIcon = document.createElement('span');
 					filterIcon.textContent = '🧽';
 					filterIcon.style.fontSize = '0.7rem';
 					topIndicators.appendChild(filterIcon);
 				}
-
+				// Cambio Acqua
+				if (wasWaterChanged(dateKey)) {
+					const waterIcon = document.createElement('span');
+					waterIcon.textContent = '🚿';
+					waterIcon.style.fontSize = '0.7rem';
+					topIndicators.appendChild(waterIcon);
+				}
+				
 				if (topIndicators.children.length > 0) {
 					cell.appendChild(topIndicators);
 				}
@@ -929,6 +980,11 @@
 
 				// Aggiungiamo la cella al contenitore
 				daysContainer.appendChild(cell);
+				
+				// ── Aggiungi questo alla fine del ciclo dei giorni ────────────────
+				cell.addEventListener('click', () => {
+					selectDate(dateObj);
+				});
 			}
 		}
 		
@@ -946,6 +1002,13 @@
 
         function renderDayView() {
 			const dateKey = formatKey(selectedDate);   // ← unica dichiarazione qui
+			
+			const isWaterTaskDay = tasks.some(task => 
+				task.id === 'water' && 
+				task.period === 'monthly-days' && 
+				task.days.includes(selectedDate.getDate())
+			);
+
 			selectedDayLabel.textContent = selectedDate.toLocaleDateString('it-IT', { 
 				weekday: 'long', 
 				day: 'numeric', 
@@ -975,6 +1038,8 @@
 					shouldShow = task.days.includes(selectedDate.getDate());
 				}
 
+				
+				
 				if (shouldShow) {
 					const completed = getTaskStatus(dateKey, task.id);
 					const card = document.createElement('div');
@@ -982,7 +1047,11 @@
 					
 					card.innerHTML = `
 						<div class="task-icon">
-							${task.period === 'monthly' ? '🚿' : task.period === 'weekly' ? '🥣' : '🧪'}
+							${task.id === 'water' ? '🚿' : 
+							  task.id === 'micro'  ? '🌱' : 
+							  task.id === 'excel'  ? '🧪' : 
+							  '❓'  // fallback
+							}
 						</div>
 						<div class="task-info">
 							<div class="task-title">${task.title}</div>
@@ -995,6 +1064,24 @@
 					container.appendChild(card);
 				}
 			});
+			
+			// Dopo aver aggiunto tutte le card programmate
+
+if (wasWaterChanged(dateKey) && !isWaterTaskDay) {  // usa la stessa variabile isWaterTaskDay definita sopra
+    const extraCard = document.createElement('div');
+    extraCard.className = 'task-card completed';  // già "fatto"
+    
+    extraCard.innerHTML = `
+        <div class="task-icon">🚿</div>
+        <div class="task-info">
+            <div class="task-title">Cambio acqua extra</div>
+            <div class="task-desc">Registrato manualmente oggi</div>
+        </div>
+        <div class="check-btn">✓</div>
+    `;
+    
+    container.appendChild(extraCard);
+}
 
 			// ── Qui usiamo la variabile dateKey già esistente ──
 			document.getElementById('dayNotes').value = getNotes(dateKey);
@@ -1015,6 +1102,22 @@
 				filterBtn.style.borderColor = 'var(--success)';
 			}
 			filterBtn.disabled = false;  // sempre cliccabile ora
+			
+			// Mostra se Cambio acqua oggi
+			const waterBtn = document.getElementById('addWaterChangeBtn');
+			const isWaterDone = wasWaterChanged(dateKey);
+
+			if (isWaterDone) {
+				waterBtn.textContent = "Cambio acqua fatto ✓ (clicca per rimuovere)";
+				waterBtn.style.background = 'rgba(0, 229, 255, 0.3)';
+				waterBtn.style.color = 'var(--accent)';
+				waterBtn.style.borderColor = 'var(--accent)';
+			} else {
+				waterBtn.textContent = "🚿 Cambio acqua oggi";
+				waterBtn.style.background = 'rgba(0, 229, 255, 0.15)';
+				waterBtn.style.color = 'var(--accent)';
+				waterBtn.style.borderColor = 'var(--accent)';
+			}
 		}
 
 		function renderAgendaView() {
@@ -1022,7 +1125,6 @@
 			container.innerHTML = '';
 
 			const today = new Date();
-			
 			const now = new Date();
 			const year = now.getFullYear();
 			const month = now.getMonth();  // mese corrente (0-11)
@@ -1152,6 +1254,60 @@
 				});
 
 				if (hasAny) rightCol.appendChild(indicators);
+				
+				// Indicatori manuali/extra (cambio acqua e filtri puliti)
+				const manualIndicators = document.createElement('div');
+				manualIndicators.style.display = 'flex';
+				manualIndicators.style.flexWrap = 'wrap';
+				manualIndicators.style.gap = '10px';
+				manualIndicators.style.marginTop = '8px';
+				manualIndicators.style.marginBottom = '8px';
+
+				let hasManual = false;
+
+				// Cambio acqua manuale
+				if (wasWaterChanged(dateKey)) {
+					const waterTag = document.createElement('div');
+					waterTag.textContent = '🚿 Cambio acqua fatto oggi';
+					waterTag.style.cssText = `
+						display: inline-flex;
+						align-items: center;
+						gap: 6px;
+						background: rgba(0, 229, 255, 0.25);
+						color: var(--accent);
+						padding: 6px 12px;
+						border-radius: 20px;
+						font-size: 0.95rem;
+						font-weight: 600;
+					`;
+					manualIndicators.appendChild(waterTag);
+					hasManual = true;
+				}
+
+				// Filtri puliti (se vuoi mostrarlo anche qui – opzionale ma coerente)
+				if (wasFilterCleaned(dateKey)) {
+					const filterTag = document.createElement('div');
+					filterTag.textContent = '🧼 Filtri puliti';
+					filterTag.style.cssText = `
+						display: inline-flex;
+						align-items: center;
+						gap: 6px;
+						background: rgba(105, 240, 174, 0.25);
+						color: var(--success);
+						padding: 6px 12px;
+						border-radius: 20px;
+						font-size: 0.95rem;
+						font-weight: 600;
+					`;
+					manualIndicators.appendChild(filterTag);
+					hasManual = true;
+				}
+
+				if (hasManual) {
+					rightCol.appendChild(manualIndicators);
+				}
+
+
 
 				// Note
 				const notes = getNotes(dateKey);
@@ -1170,21 +1326,6 @@
 					rightCol.appendChild(noteBox);
 				}
 
-				// Filtri puliti
-				if (wasFilterCleaned(dateKey)) {
-					const filterTag = document.createElement('div');
-					filterTag.textContent = '🧼 Filtri puliti!';
-					filterTag.style.cssText = `
-						display: inline-block;
-						background: rgba(178,255,255,0.4);
-						color: var(--success);
-						padding: 4px 12px;
-						border-radius: 20px;
-						font-size: 1.85rem;
-						margin-top: 8px;
-					`;
-					rightCol.appendChild(filterTag);
-				}
 
 				dayCard.appendChild(leftCol);
 				dayCard.appendChild(rightCol);
